@@ -8,44 +8,34 @@ import socketserver
 
 API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
 bot = telebot.TeleBot(API_TOKEN)
-VIDEOLAR_DOSYASI = "videolar.txt"
-KULLANICILAR_DOSYASI = "kullanicilar.txt"
 
-def dosya_kaydet(dosya, veri):
-    with open(dosya, "a") as f:
-        f.write(f"{veri}\n")
-
-def listeyi_oku(dosya):
-    if not os.path.exists(dosya):
-        return []
-    with open(dosya, "r") as f:
-        return [line.strip() for line in f if line.strip()]
+# Verileri dosya yerine doğrudan canlı hafızada (RAM) tutuyoruz!
+AKTIF_VIDEOLAR = []
+AKTIF_KULLANICILAR = set()
 
 @bot.message_handler(content_types=['video'])
 def video_kaydet(message):
     file_id = message.video.file_id
-    dosya_kaydet(VIDEOLAR_DOSYASI, file_id)
-    bot.reply_to(message, "✅ Video hafızaya alındı!")
+    if file_id not in AKTIF_VIDEOLAR:
+        AKTIF_VIDEOLAR.append(file_id)
+    bot.reply_to(message, f"✅ Video hafızaya alındı! Toplam video sayısı: {len(AKTIF_VIDEOLAR)}")
 
 @bot.message_handler(commands=['start'])
 def start(message):
     chat_id = str(message.chat.id)
-    kullanicilar = listeyi_oku(KULLANICILAR_DOSYASI)
-    if chat_id not in kullanicilar:
-        dosya_kaydet(KULLANICILAR_DOSYASI, chat_id)
-    bot.reply_to(message, "🚀 Bot aktif! Videoları bana iletirsen listeme eklerim.")
+    AKTIF_KULLANICILAR.add(chat_id)
+    bot.reply_to(message, "🚀 Bot aktif! Kanalındaki videoları bana yönlendir (forward et), onları hafızama alıp sırayla paylaşayım.")
 
 def video_gonder():
     while True:
-        time.sleep(60)  # 1 dakikada bir kontrol
-        videolar = listeyi_oku(VIDEOLAR_DOSYASI)
-        kullanicilar = listeyi_oku(KULLANICILAR_DOSYASI)
+        time.sleep(60)  # Her 60 saniyede bir gönderim yapar
         
-        if videolar and kullanicilar:
-            secilen_video = random.choice(videolar)
-            for user_id in kullanicilar:
+        # Eğer hafızada video ve kullanıcı varsa gönderim başlar
+        if AKTIF_VIDEOLAR and AKTIF_KULLANICILAR:
+            secilen_video = random.choice(AKTIF_VIDEOLAR)
+            for user_id in list(AKTIF_KULLANICILAR):
                 try:
-                    bot.send_video(chat_id=user_id, video=secilen_video)
+                    bot.send_video(chat_id=int(user_id), video=secilen_video, caption="🎬 İşte günün videosu!")
                 except Exception as e:
                     print("Gönderim hatası:", e)
 
