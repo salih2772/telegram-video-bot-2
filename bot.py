@@ -3,37 +3,50 @@ import telebot
 import os
 import time
 import threading
+import http.server
+import socketserver
 
 API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
 bot = telebot.TeleBot(API_TOKEN)
-
-KANAL_ID = -1004367140777
+VIDEOLAR_DOSYASI = "videolar.txt"
 KULLANICILAR_DOSYASI = "kullanicilar.txt"
-son_gonderilen_mesaj_id = None
 
-def kullanicilari_yukle():
-    if not os.path.exists(KULLANICILAR_DOSYASI): return []
-    with open(KULLANICILAR_DOSYASI, "r") as f:
-        return [line.strip() for line in f if line.strip()]
+def dosya_kaydet(dosya, veri):
+    with open(dosya, "a") as f: f.write(f"{veri}\n")
+
+def listeyi_oku(dosya):
+    if not os.path.exists(dosya): return []
+    with open(dosya, "r") as f: return [line.strip() for line in f if line.strip()]
+
+@bot.message_handler(content_types=['video'])
+def video_kaydet(message):
+    file_id = message.video.file_id
+    dosya_kaydet(VIDEOLAR_DOSYASI, file_id)
+    bot.reply_to(message, "✅ Video hafızaya alındı!")
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    dosya_kaydet(KULLANICILAR_DOSYASI, str(message.chat.id))
+    bot.reply_to(message, "🚀 Bot aktif! Videoları bana iletirsen listeme eklerim.")
 
 def video_gonder():
-    global son_gonderilen_mesaj_id
     while True:
-        time.sleep(60)
-        kullanicilar = kullanicilari_yukle()
-        if not kullanicilar: continue
+        time.sleep(60) # 1 dakikada bir kontrol
+        videolar = listeyi_oku(VIDEOLAR_DOSYASI)
+        kullanicilar = listeyi_oku(KULLANICILAR_DOSYASI)
+        
+        if videolar and kullanicilar:
+            secilen_video = random.choice(videolar)
+            for user_id in kullanicilar:
+                try: bot.send_video(chat_id=user_id, video=secilen_video)
+                except: pass
 
-        try:
-            history = bot.get_chat_history(chat_id=KANAL_ID, limit=100)
-            videolu_mesajlar = [msg for msg in history if msg.video is not None]
-            
-            if not videolu_mesajlar:
-                continue
-
-            if len(videolu_mesajlar) > 1 and son_gonderilen_mesaj_id is not None:
-                secenekler = [msg for msg in videolu_mesajlar if msg.message_id != son_gonderilen_mesaj_id]
-            else:
-                secenekler = videolu_mesajlar
+# Bot ve Web Sunucusu
+threading.Thread(target=lambda: bot.polling(non_stop=True), daemon=True).start()
+threading.Thread(target=video_gonder, daemon=True).start()
+port = int(os.environ.get("PORT", 10000))
+with socketserver.TCPServer(("", port), http.server.SimpleHTTPRequestHandler) as httpd:
+    httpd.serve_forever()
 
             secilen_mesaj = random.choice(secenekler)
             son_gonderilen_mesaj_id = secilen_mesaj.message_id
