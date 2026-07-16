@@ -1,73 +1,82 @@
 import random
-import telebot
 import os
 import time
 import threading
-import http.server
-import socketserver
+from flask import Flask, request
+import telebot
+from pymongo import MongoClient
 
+# --- CONFIG ---
 API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
-bot = telebot.TeleBot(API_TOKEN)
+MONGO_URI = "mongodb+srv://darbesalih31_db_user:3JA3BdQ9AO1JSkSu@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
 
-# Dosya isimleri
-VIDEO_FILE = "videolar.txt"
-USER_FILE = "kullanicilar.txt"
+# --- BAĞLANTILAR ---
+bot = telebot.TeleBot(API_TOKEN, threaded=False)
+app = Flask(__name__)
 
-# Dosyalardan verileri yükleyen fonksiyonlar
-def dosya_oku_liste(dosya_adi):
-    if os.path.exists(dosya_adi):
-        with open(dosya_adi, "r") as f:
-            return [line.strip() for line in f.readlines() if line.strip()]
-    return []
+# MongoDB Bağlantısı
+client = MongoClient(MONGO_URI)
+db = client["telegram_bot_db"]
+video_col = db["videolar"]
+user_col = db["kullanicilar"]
 
-def dosya_yaz_ekle(dosya_adi, veri):
-    with open(dosya_adi, "a") as f:
-        f.write(f"{veri}\n")
+# --- WEBHOOK GİRİŞ NOKTASI ---
+@app.route(f'/{API_TOKEN}', methods=['POST'])
+def getMessage():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
 
-# Canlı listeleri dosyadan dolduruyoruz
-AKTIF_VIDEOLAR = dosya_oku_liste(VIDEO_FILE)
-AKTIF_KULLANICILAR = set(dosya_oku_liste(USER_FILE))
+@app.route("/")
+def webhook_status():
+    return "Bot Webhook Modunda Aktif!", 200
+
+# --- BOT KOMUTLARI ---
+@bot.message_handler(commands=['start'])
+def start(message):
+    chat_id = str(message.chat.id)
+    
+    # Kullanıcı zaten kayıtlı mı kontrol et, yoksa kaydet
+    if not user_col.find_one({"chat_id": chat_id}):
+        user_col.insert_one({"chat_id": chat_id})
+        bot.reply_to(message, "🚀 Bot aktif! Kanalındaki videoları bana yönlendir, sırayla paylaşayım.")
+    else:
+        bot.reply_to(message, "Zaten aktifsin kanka! Videoları göndermeye devam edebilirsin.")
 
 @bot.message_handler(content_types=['video'])
 def video_kaydet(message):
     file_id = message.video.file_id
-    if file_id not in AKTIF_VIDEOLAR:
-        AKTIF_VIDEOLAR.append(file_id)
-        dosya_yaz_ekle(VIDEO_FILE, file_id) # Kalıcı olarak kaydet
-    bot.reply_to(message, f"✅ Video hafızaya alındı! Toplam video sayısı: {len(AKTIF_VIDEOLAR)}")
+    
+    # Video zaten kayıtlı mı kontrol et, yoksa kaydet
+    if not video_col.find_one({"file_id": file_id}):
+        video_col.insert_one({"file_id": file_id})
+        toplam_video = video_col.count_documents({})
+        bot.reply_to(message, f"✅ Video güvenli bulut hafızasına alındı! Toplam video sayısı: {toplam_video}")
+    else:
+        bot.reply_to(message, "Bu video zaten hafızada var kanka!")
 
-@bot.message_handler(commands=['start'])
-def start(message):
-    chat_id = str(message.chat.id)
-    if chat_id not in AKTIF_KULLANICILAR:
-        AKTIF_KULLANICILAR.add(chat_id)
-        dosya_yaz_ekle(USER_FILE, chat_id) # Kalıcı olarak kaydet
-    bot.reply_to(message, "🚀 Bot aktif! Kanalındaki videoları bana yönlendir, sırayla paylaşayım.")
-
+# --- ARKA PLAN VİDEO GÖNDERİM DÖNGÜSÜ ---
 def video_gonder():
     while True:
-        time.sleep(60)  # Her 60 saniyede bir gönderim yapar
+        time.sleep(60)  # Her 60 saniyede bir kontrol et ve gönder
         
-        # Güncel listeleri kontrol et
-        if AKTIF_VIDEOLAR and AKTIF_KULLANICILAR:
-            secilen_video = random.choice(AKTIF_VIDEOLAR)
-            for user_id in list(AKTIF_KULLANICILAR):
+        # Veritabanından güncel verileri çekiyoruz
+        aktif_videolar = [doc["file_id"] for doc in video_col.find()]
+        aktif_kullanicilar = [doc["chat_id"] for doc in user_col.find()]
+        
+        if aktif_videolar and aktif_kullanicilar:
+            secilen_video = random.choice(aktif_videolar)
+            for user_id in aktif_kullanicilar:
                 try:
                     bot.send_video(chat_id=int(user_id), video=secilen_video, caption="🎬 İşte günün videosu!")
                 except Exception as e:
-                    print("Gönderim hatası:", e)
+                    print("Gönderim hatası (Kullanıcı botu engellemiş olabilir):", e)
 
-# Arka plan thread'leri
-threading.Thread(target=lambda: bot.polling(non_stop=True), daemon=True).start()
+# Video gönderme döngüsünü arka planda başlatıyoruz
 threading.Thread(target=video_gonder, daemon=True).start()
 
-# Render Web Sunucusu
-class MyHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot calisiyor!")
-
-port = int(os.environ.get("PORT", 10000))
-with socketserver.TCPServer(("", port), MyHandler) as httpd:
-    httpd.serve_forever()
+# --- RUN ---
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
