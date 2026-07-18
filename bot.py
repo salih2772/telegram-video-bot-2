@@ -8,29 +8,37 @@ from pymongo import MongoClient
 
 # --- CONFIG ---
 API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
-# Yeni şifrenle (Salih123456) güncellenmiş MongoDB linki kanka:
 MONGO_URI = "mongodb+srv://darbesalih31_db_user:Salih123456@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
-RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"  # Render loglarındaki güncel adresin
+RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"
 
 # --- BAĞLANTILAR ---
 bot = telebot.TeleBot(API_TOKEN, threaded=False)
 app = Flask(__name__)
 
-# MongoDB Bağlantısı (Hata yakalamalı)
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client["telegram_bot_db"]
     video_col = db["videolar"]
     user_col = db["kullanicilar"]
-    # Bağlantıyı test et
     client.admin.command('ping')
     print("🚀 MongoDB Bağlantısı Başarılı!")
 except Exception as e:
     print("❌ MongoDB Bağlantı Hatası:", e)
 
+# Arka plan döngüsünün canlı olup olmadığını kontrol eden değişken
+dongu_thread = None
+
+def dongu_kontrol():
+    global dongu_thread
+    if dongu_thread is None or not dongu_thread.is_alive():
+        print("⚠️ Arka plan döngüsü durmuş veya başlamamış! Yeniden başlatılıyor...")
+        dongu_thread = threading.Thread(target=video_gonder, daemon=True)
+        dongu_thread.start()
+
 # --- WEBHOOK GİRİŞ NOKTASI ---
 @app.route(f'/{API_TOKEN}', methods=['POST'])
 def getMessage():
+    dongu_kontrol()  # Her istek geldiğinde döngü yaşıyor mu diye bak, öldüyse dirilt
     try:
         json_string = request.get_data().decode('utf-8')
         update = telebot.types.Update.de_json(json_string)
@@ -41,6 +49,7 @@ def getMessage():
 
 @app.route("/")
 def webhook_status():
+    dongu_kontrol()  # Siteye her ping geldiğinde döngüyü kontrol et
     return "Bot Webhook Modunda Aktif ve Dinlemede!", 200
 
 # --- BOT KOMUTLARI ---
@@ -54,7 +63,7 @@ def start(message):
         else:
             bot.reply_to(message, "Zaten aktifsin kanka! Videoları göndermeye devam edebilirsin.")
     except Exception as e:
-        print("Kullanıcı kaydetme hatası (MongoDB IP engeli olabilir):", e)
+        print("Kullanıcı kaydetme hatası:", e)
         bot.reply_to(message, "Şu an veritabanına bağlanamıyorum kanka, birazdan tekrar dene.")
 
 @bot.message_handler(content_types=['video'])
@@ -68,12 +77,12 @@ def video_kaydet(message):
         else:
             bot.reply_to(message, "Bu video zaten hafızada var kanka!")
     except Exception as e:
-        print("Video kaydetme hatası (MongoDB IP engeli olabilir):", e)
+        print("Video kaydetme hatası:", e)
 
 # --- ARKA PLAN VİDEO GÖNDERİM DÖNGÜSÜ ---
 def video_gonder():
     while True:
-        time.sleep(60)  # Test için 60 saniyede bir kontrol
+        time.sleep(60)  # Kanka buraya kesinlikle dokunmadım, senin 60 saniyelik test süren aynen duruyor
         try:
             aktif_videolar = [doc["file_id"] for doc in video_col.find()]
             aktif_kullanicilar = [doc["chat_id"] for doc in user_col.find()]
@@ -88,12 +97,11 @@ def video_gonder():
         except Exception as e:
             print("Döngü içinde MongoDB hatası:", e)
 
-# Video gönderme döngüsünü arka planda başlatıyoruz
-threading.Thread(target=video_gonder, daemon=True).start()
+# İlk açılışta döngüyü tetikliyoruz
+dongu_kontrol()
 
 # --- RUN ---
 if __name__ == "__main__":
-    # Telegram'a webhook adresini bildiriyoruz
     try:
         bot.remove_webhook()
         time.sleep(1)
