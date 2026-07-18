@@ -8,8 +8,9 @@ from pymongo import MongoClient
 
 # --- CONFIG ---
 API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
-MONGO_URI = "mongodb+srv://darbesalih31_db_user:3JA3BdQ9AO1JSkSu@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
-RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"  # Render loglarındaki güncel adresinle eşitledim kanka!
+# Yeni şifrenle (Salih123456) güncellenmiş MongoDB linki kanka:
+MONGO_URI = "mongodb+srv://darbesalih31_db_user:Salih123456@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
+RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"  # Render loglarındaki güncel adresin
 
 # --- BAĞLANTILAR ---
 bot = telebot.TeleBot(API_TOKEN, threaded=False)
@@ -72,7 +73,7 @@ def video_kaydet(message):
 # --- ARKA PLAN VİDEO GÖNDERİM DÖNGÜSÜ ---
 def video_gonder():
     while True:
-        time.sleep(60)  # Test için 60 saniyede bir kontrol (İstersen sonra 1800 yaparsın kanka)
+        time.sleep(60)  # Test için 60 saniyede bir kontrol
         try:
             aktif_videolar = [doc["file_id"] for doc in video_col.find()]
             aktif_kullanicilar = [doc["chat_id"] for doc in user_col.find()]
