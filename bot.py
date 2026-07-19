@@ -12,13 +12,12 @@ API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
 MONGO_URI = "mongodb+srv://darbesalih31_db_user:Salih123456@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
 RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"
 BENIM_ID = "7826173288" 
-# Mercimek sesi ID'sini buraya yapıştıracaksın (bota atınca sana ID'yi verecek)
 MERCIMEK_VOICE_ID = "CQACAgQAAxkBAAIRpGpdBzb7k9Plsnd2AXVxRCzofIM7AALeHQAC55TpUhWPQyP3j1AaPQQ" 
 
 # --- BAĞLANTILAR ---
 bot = telebot.TeleBot(API_TOKEN, threaded=False)
 app = Flask(__name__)
-bot_running = True # Döngü kontrolü için
+bot_running = True 
 
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
@@ -30,7 +29,7 @@ try:
 except Exception as e:
     print("❌ MongoDB Bağlantı Hatası:", e)
 
-# ... (Döngü ve Webhook fonksiyonları aynı kalıyor) ...
+# ... (Döngü ve Webhook fonksiyonları aynı) ...
 dongu_thread = None
 def dongu_kontrol():
     global dongu_thread
@@ -61,19 +60,47 @@ def webhook_status():
 
 # --- KOMUTLAR ---
 
+@bot.message_handler(commands=['yardim'])
+def yardim_menusu(message):
+    yardim_metni = """
+🤖 **Semih'in Komut Menüsü:**
+
+🔹 **Genel Komutlar:**
+/start - Botu başlatır.
+/id - ID numaranı gösterir.
+/baldi - Rastgele replik atar.
+/mercimek - Mercimek sesi çalar.
+
+"""
+    if str(message.chat.id) == BENIM_ID:
+        yardim_metni += """
+👑 **Geliştirici Komutları:**
+/baslat - Video döngüsünü başlatır.
+/durdur - Video döngüsünü durdurur.
+/temizle - Havuzu sıfırlar.
+/durum - Botun güncel durumunu gösterir.
+/kullanicilar - Kayıtlı ID'leri listeler.
+/duyuru [mesaj] - Herkese duyuru yapar.
+"""
+    bot.reply_to(message, yardim_metni, parse_mode="Markdown")
+
+@bot.message_handler(commands=['id'])
+def id_ogren(message):
+    bot.reply_to(message, f"Senin ID numaran: {message.chat.id}")
+
 @bot.message_handler(commands=['baslat'])
 def baslat(message):
     global bot_running
     if str(message.chat.id) != BENIM_ID: return
     bot_running = True
-    bot.reply_to(message, "✅ Döngü başlatıldı, videolar akmaya devam!")
+    bot.reply_to(message, "✅ Döngü başlatıldı!")
 
 @bot.message_handler(commands=['durdur'])
 def durdur(message):
     global bot_running
     if str(message.chat.id) != BENIM_ID: return
     bot_running = False
-    bot.reply_to(message, "🛑 Döngü durduruldu. Sadece komutlara bakıyorum.")
+    bot.reply_to(message, "🛑 Döngü durduruldu.")
 
 @bot.message_handler(commands=['baldi'])
 def baldi_sozleri(message):
@@ -82,42 +109,27 @@ def baldi_sozleri(message):
 
 @bot.message_handler(commands=['mercimek'])
 def mercimek_sesi(message):
-    if MERCIMEK_VOICE_ID == "BURAYA_KODU_YAPISTIR":
-        bot.reply_to(message, "Kanka önce ses dosyasını bota atıp ID'sini öğrenmen lazım, koda işlemedin!")
-    else:
-        bot.send_voice(chat_id=message.chat.id, voice=MERCIMEK_VOICE_ID)
-
-# Ses dosyası ID'sini bulmak için yardımcı
-@bot.message_handler(content_types=['voice', 'audio'])
-def ses_id_bul(message):
-    if str(message.chat.id) == BENIM_ID:
-        ses_id = message.voice.file_id if message.voice else message.audio.file_id
-        bot.reply_to(message, f"🎯 Ses dosyasının ID'si: `{ses_id}`\n\nBunu koddaki MERCIMEK_VOICE_ID kısmına yapıştır!")
-
-# --- DİĞER FONKSİYONLAR ---
-# (Temizle, durum, kullanicilar, start, video_kaydet aynı kalıyor...)
+    try: bot.send_voice(chat_id=message.chat.id, voice=MERCIMEK_VOICE_ID)
+    except: bot.reply_to(message, "Ses dosyasında hata var!")
 
 @bot.message_handler(commands=['temizle'])
 def veritabani_temizle(message):
-    if str(message.chat.id) != BENIM_ID:
-        bot.reply_to(message, "Semih buna kanmaz ahhahaha!")
-        return
+    if str(message.chat.id) != BENIM_ID: return
     silinen = video_col.delete_many({})
     bot.reply_to(message, f"🧹 Havuz sıfırlandı! {silinen.deleted_count} video silindi.")
 
 @bot.message_handler(commands=['durum'])
 def bot_durum(message):
     if str(message.chat.id) != BENIM_ID: return
-    video_sayisi = video_col.count_documents({})
-    kullanici_sayisi = user_col.count_documents({})
-    bot.reply_to(message, f"📊 Semih'in Durumu:\n- Video: {video_sayisi}\n- Kullanıcı: {kullanici_sayisi}\n- Durum: {'Çalışıyor' if bot_running else 'Durdu'}")
+    v_sayi = video_col.count_documents({})
+    k_sayi = user_col.count_documents({})
+    bot.reply_to(message, f"📊 Durum:\nVideo: {v_sayi}\nKullanıcı: {k_sayi}\nDöngü: {'Çalışıyor' if bot_running else 'Durdu'}")
 
 @bot.message_handler(commands=['kullanicilar'])
 def listele_kullanicilar(message):
     if str(message.chat.id) != BENIM_ID: return
     kullanicilar = [doc["chat_id"] for doc in user_col.find()]
-    liste = "\n".join(kullanicilar) if kullanicilar else "Yok."
-    bot.reply_to(message, f"👥 Kullanıcılar:\n{liste}")
+    bot.reply_to(message, f"👥 Kullanıcılar:\n" + ("\n".join(kullanicilar) if kullanicilar else "Yok"))
 
 @bot.message_handler(commands=['duyuru'])
 def toplu_duyuru(message):
@@ -134,7 +146,7 @@ def start(message):
     chat_id = str(message.chat.id)
     if not user_col.find_one({"chat_id": chat_id}):
         user_col.insert_one({"chat_id": chat_id})
-        bot.reply_to(message, "🚀 Semih aktif!")
+    bot.reply_to(message, "🚀 Semih aktif!")
 
 @bot.message_handler(content_types=['video'])
 def video_kaydet(message):
@@ -147,7 +159,7 @@ def video_kaydet(message):
 def video_gonder():
     while True:
         time.sleep(60)
-        if bot_running: # Sadece bot_running True ise çalışır
+        if bot_running:
             try:
                 aktif_videolar = [doc["file_id"] for doc in video_col.find()]
                 aktif_kullanicilar = [doc["chat_id"] for doc in user_col.find()]
