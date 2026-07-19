@@ -29,7 +29,6 @@ try:
 except Exception as e:
     print("❌ MongoDB Bağlantı Hatası:", e)
 
-# ... (Döngü ve Webhook fonksiyonları aynı) ...
 dongu_thread = None
 def dongu_kontrol():
     global dongu_thread
@@ -68,9 +67,10 @@ def yardim_menusu(message):
 🔹 **Genel Komutlar:**
 /start - Botu başlatır.
 /id - ID numaranı gösterir.
+/samih - Samih'e laf atarsın.
+/semaver - Semaver muhabbeti.
 /baldi - Rastgele replik atar.
 /mercimek - Mercimek sesi çalar.
-
 """
     if str(message.chat.id) == BENIM_ID:
         yardim_metni += """
@@ -83,6 +83,15 @@ def yardim_menusu(message):
 /duyuru [mesaj] - Herkese duyuru yapar.
 """
     bot.reply_to(message, yardim_metni, parse_mode="Markdown")
+
+# TROL KOMUTLARI
+@bot.message_handler(commands=['samih'])
+def samih_trol(message):
+    bot.reply_to(message, "annenmih")
+
+@bot.message_handler(commands=['semaver'])
+def semaver_trol(message):
+    bot.reply_to(message, "Annenver")
 
 @bot.message_handler(commands=['id'])
 def id_ogren(message):
