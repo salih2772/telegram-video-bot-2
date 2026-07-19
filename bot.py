@@ -25,16 +25,9 @@ try:
     video_col = db["videolar"]
     user_col = db["kullanicilar"]
     client.admin.command('ping')
-    print("🚀 MongoDB Bağlantısı Başarılı!")
+    print("🚀 [DEBUG] MongoDB Bağlantısı Başarılı!")
 except Exception as e:
-    print("❌ MongoDB Bağlantı Hatası:", e)
-
-dongu_thread = None
-def dongu_kontrol():
-    global dongu_thread
-    if dongu_thread is None or not dongu_thread.is_alive():
-        dongu_thread = threading.Thread(target=video_gonder, daemon=True)
-        dongu_thread.start()
+    print("❌ [DEBUG] MongoDB Bağlantı Hatası:", e)
 
 def self_ping():
     while True:
@@ -44,23 +37,30 @@ def self_ping():
 
 @app.route(f'/{API_TOKEN}', methods=['POST'])
 def getMessage():
-    dongu_kontrol()
     try:
         json_string = request.get_data().decode('utf-8')
         update = telebot.types.Update.de_json(json_string)
+        
+        # Gelen mesajı loglayalım
+        if update.message:
+            print(f"📩 [DEBUG] Telegram'dan Mesaj Geldi -> Gönderen ID: {update.message.chat.id} | Metin: {update.message.text}")
+        
         bot.process_new_updates([update])
-    except: pass
+        print("✅ [DEBUG] Mesaj başarıyla process_new_updates'e gönderildi.")
+    except Exception as e:
+        print("❌ [DEBUG] Webhook Mesaj İşleme Hatası:", e)
     return "!", 200
 
 @app.route("/")
 def webhook_status():
-    dongu_kontrol()
+    print("🔍 [DEBUG] Webhook durum sayfası tetiklendi (Ping geldi).")
     return "Bot Aktif!", 200
 
 # --- KOMUTLAR ---
 
 @bot.message_handler(commands=['yardim'])
 def yardim_menusu(message):
+    print(f"⚙️ [DEBUG] /yardim komutu tetiklendi. Tetikleyen: {message.chat.id}")
     yardim_metni = """
 🤖 **Semih'in Komut Menüsü:**
 
@@ -112,14 +112,15 @@ def at_trol(message):
 
 @bot.message_handler(commands=['salı', 'sali'])
 def sali_trol(message):
+    print("🤣 [DEBUG] /sali komutu çalıştırıldı!")
     bot.reply_to(message, "benim arkadaşım")
 
 # Özel trol metinleri
-@bot.message_handler(func=lambda message: message.text and (message.text.strip() == "/semih kalp mercimek" or message.text.strip() == "/semih kalp mercimek@semih_bot"))
+@bot.message_handler(func=lambda message: message.text and ("/semih kalp mercimek" in message.text))
 def ask_trol(message):
     bot.reply_to(message, "lan aşkımızı karıştırma 0rusbu cocu")
 
-@bot.message_handler(func=lambda message: message.text and (message.text.strip() == "/selo kalp semih" or message.text.strip() == "/selo kalp semih@semih_bot"))
+@bot.message_handler(func=lambda message: message.text and ("/selo kalp semih" in message.text))
 def selo_trol(message):
     bot.reply_to(message, "SG OE Ü")
 
@@ -184,6 +185,7 @@ def toplu_duyuru(message):
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    print(f"🚀 [DEBUG] /start basıldı. ID: {message.chat.id}")
     chat_id = str(message.chat.id)
     if not user_col.find_one({"chat_id": chat_id}):
         user_col.insert_one({"chat_id": chat_id})
@@ -207,16 +209,25 @@ def video_gonder():
                 if aktif_videolar and aktif_kullanicilar:
                     secilen_video = random.choice(aktif_videolar)
                     for user_id in aktif_kullanicilar:
-                        try: bot.send_video(chat_id=int(user_id), video=secilen_video, caption="🎬 Semih'ten günün videosu!")
-                        except: pass
-            except: pass
+                        try: 
+                            bot.send_video(chat_id=int(user_id), video=secilen_video, caption="🎬 Semih'ten günün videosu!")
+                            print(f"📺 [DEBUG] Arka plan videosu başarıyla gönderildi -> ID: {user_id}")
+                        except Exception as ve:
+                            print(f"❌ [DEBUG] Video gönderilemedi ({user_id}):", ve)
+            except Exception as e:
+                print("❌ [DEBUG] Video döngü hatası:", e)
 
-dongu_kontrol()
-threading.Thread(target=self_ping, daemon=True).start()
-
+# --- BAŞLANGIÇ AYAĞI ---
 if __name__ == "__main__":
+    print("⏳ [DEBUG] Webhook ayarlanıyor...")
     bot.remove_webhook()
     time.sleep(1)
     bot.set_webhook(url=f"{RENDER_URL}/{API_TOKEN}")
+    print(f"🔗 [DEBUG] Webhook adresi kuruldu: {RENDER_URL}/{API_TOKEN}")
+    
+    threading.Thread(target=video_gonder, daemon=True).start()
+    threading.Thread(target=self_ping, daemon=True).start()
+    print("🧵 [DEBUG] Arka plan thread'leri başlatıldı.")
+    
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
