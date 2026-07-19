@@ -70,6 +70,8 @@ def yardim_menusu(message):
 /samih - Samih'e laf atarsın.
 /semaver - Semaver muhabbeti.
 /doner - Döner durumu.
+/ber - ...
+/at - ...
 /baldi - Rastgele replik atar.
 /mercimek - Mercimek sesi çalar.
 """
@@ -99,7 +101,15 @@ def semaver_trol(message):
 def doner_trol(message):
     bot.reply_to(message, "döner çalındı")
 
-# /semih kalp mercimek yazınca tetiklenecek özel alan
+@bot.message_handler(commands=['ber'])
+def ber_trol(message):
+    bot.reply_to(message, "barat")
+
+@bot.message_handler(commands=['at'])
+def at_trol(message):
+    bot.reply_to(message, "lan at salih")
+
+# Özel küfürlü komut
 @bot.message_handler(func=lambda message: message.text and (message.text.strip() == "/semih kalp mercimek" or message.text.strip() == "/semih kalp mercimek@semih_bot"))
 def ask_trol(message):
     bot.reply_to(message, "lan aşkımızı karıştırma 0rusbu cocu")
