@@ -93,6 +93,33 @@ def listele_kullanicilar(message):
         liste = "\n".join(kullanicilar)
         bot.reply_to(message, f"👥 Kayıtlı Kullanıcı ID'leri:\n{liste}")
 
+# GELİŞTİRİCİ DUYURU KOMUTU
+@bot.message_handler(commands=['duyuru'])
+def toplu_duyuru(message):
+    if str(message.chat.id) != BENIM_ID:
+        bot.reply_to(message, "Semih buna kanmaz ahhahaha!")
+        return
+    
+    # Komuttan sonra yazılan metni alıyoruz
+    duyuru_metni = message.text.replace("/duyuru", "").strip()
+    
+    if not duyuru_metni:
+        bot.reply_to(message, "Kanka boş duyuru mu yapacan? Mesajını da yaz: `/duyuru mesajın`")
+        return
+        
+    kullanicilar = [doc["chat_id"] for doc in user_col.find()]
+    basarili = 0
+    
+    for user_id in kullanicilar:
+        try:
+            bot.send_message(chat_id=int(user_id), text=f"📢 Semih'ten Duyuru:\n\n{duyuru_metni}")
+            basarili += 1
+            time.sleep(0.1) # Telegram ban yememek için hafif yavaşlatma
+        except:
+            pass
+            
+    bot.reply_to(message, f"✅ Duyuru toplam {basarili} kişiye başarıyla gönderildi kanka!")
+
 @bot.message_handler(commands=['start'])
 def start(message):
     chat_id = str(message.chat.id)
@@ -129,6 +156,7 @@ def video_gonder():
         except:
             pass
 
+dongu_threshold = None
 dongu_kontrol()
 threading.Thread(target=self_ping, daemon=True).start()
 
