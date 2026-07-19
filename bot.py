@@ -12,7 +12,7 @@ API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
 MONGO_URI = "mongodb+srv://darbesalih31_db_user:Salih123456@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
 RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"
 # Buraya şimdilik 12345 yaz, botu çalıştırınca /id komutuyla gerçek ID'ni öğrenip burayı güncellersin.
-BENIM_ID = "12345" 
+BENIM_ID = "7826173288" 
 
 # --- BAĞLANTILAR ---
 bot = telebot.TeleBot(API_TOKEN, threaded=False)
