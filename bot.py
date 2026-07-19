@@ -13,7 +13,7 @@ MONGO_URI = "mongodb+srv://darbesalih31_db_user:Salih123456@cluster0.xaa391s.mon
 RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"
 BENIM_ID = "7826173288" 
 # Mercimek sesi ID'sini buraya yapıştıracaksın (bota atınca sana ID'yi verecek)
-MERCIMEK_VOICE_ID = "CQACAgQAAxkBAA IRpGpdBzb7k9Plsnd2AXVxRCzofIM7AALeH QAC55TpUhWPQyP3j1AaPQQ" 
+MERCIMEK_VOICE_ID = "CQACAgQAAxkBAAIRpGpdBzb7k9Plsnd2AXVxRCzofIM7AALeHQAC55TpUhWPQyP3j1AaPQQ" 
 
 # --- BAĞLANTILAR ---
 bot = telebot.TeleBot(API_TOKEN, threaded=False)
