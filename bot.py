@@ -11,7 +11,7 @@ from pymongo import MongoClient
 API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
 MONGO_URI = "mongodb+srv://darbesalih31_db_user:Salih123456@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
 RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"
-# Buraya şimdilik 12345 yaz, botu çalıştırınca /id komutuyla gerçek ID'ni öğrenip burayı güncellersin.
+# Senin gerçek Telegram ID'n tanımlandı, artık patron sensin!
 BENIM_ID = "7826173288" 
 
 # --- BAĞLANTILAR ---
@@ -65,6 +65,19 @@ def webhook_status():
 def id_ogren(message):
     bot.reply_to(message, f"Senin ID numaran: {message.chat.id}")
 
+# HAVUZU TEMİZLEME KOMUTU
+@bot.message_handler(commands=['temizle'])
+def veritabani_temizle(message):
+    if str(message.chat.id) != BENIM_ID:
+        bot.reply_to(message, "Bu komut sadece geliştiriciye özeldir kanka!")
+        return
+    
+    try:
+        silinen = video_col.delete_many({})
+        bot.reply_to(message, f"🧹 Havuz sıfırlandı! Toplam {silinen.deleted_count} eski video silindi. Artık yenilerini atabilirsin!")
+    except Exception as e:
+        bot.reply_to(message, f"Hata oluştu: {e}")
+
 @bot.message_handler(commands=['start'])
 def start(message):
     chat_id = str(message.chat.id)
@@ -74,6 +87,7 @@ def start(message):
 
 @bot.message_handler(content_types=['video'])
 def video_kaydet(message):
+    # Güvenlik Kontrolü
     if str(message.chat.id) != BENIM_ID:
         bot.reply_to(message, "Kanka, sadece geliştirici video ekleyebilir!")
         return
