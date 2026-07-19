@@ -11,7 +11,6 @@ from pymongo import MongoClient
 API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
 MONGO_URI = "mongodb+srv://darbesalih31_db_user:Salih123456@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
 RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"
-# Senin gerçek Telegram ID'n tanımlandı, artık patron sensin!
 BENIM_ID = "7826173288" 
 
 # --- BAĞLANTILAR ---
@@ -60,36 +59,51 @@ def webhook_status():
     dongu_kontrol()
     return "Bot Aktif!", 200
 
-# ID ÖĞRENME KOMUTU
+# --- KOMUTLAR ---
+
 @bot.message_handler(commands=['id'])
 def id_ogren(message):
     bot.reply_to(message, f"Senin ID numaran: {message.chat.id}")
 
-# HAVUZU TEMİZLEME KOMUTU
 @bot.message_handler(commands=['temizle'])
 def veritabani_temizle(message):
     if str(message.chat.id) != BENIM_ID:
-        bot.reply_to(message, "Bu komut sadece geliştiriciye özeldir kanka!")
+        bot.reply_to(message, "Semih buna kanmaz ahhahaha!")
         return
-    
     try:
         silinen = video_col.delete_many({})
-        bot.reply_to(message, f"🧹 Havuz sıfırlandı! Toplam {silinen.deleted_count} eski video silindi. Artık yenilerini atabilirsin!")
+        bot.reply_to(message, f"🧹 Havuz sıfırlandı! {silinen.deleted_count} video silindi.")
     except Exception as e:
         bot.reply_to(message, f"Hata oluştu: {e}")
+
+@bot.message_handler(commands=['durum'])
+def bot_durum(message):
+    if str(message.chat.id) != BENIM_ID: return
+    video_sayisi = video_col.count_documents({})
+    kullanici_sayisi = user_col.count_documents({})
+    bot.reply_to(message, f"📊 Semih'in Durumu:\n- Havuzdaki video: {video_sayisi}\n- Kayıtlı kullanıcı: {kullanici_sayisi}")
+
+@bot.message_handler(commands=['kullanicilar'])
+def listele_kullanicilar(message):
+    if str(message.chat.id) != BENIM_ID: return
+    kullanicilar = [doc["chat_id"] for doc in user_col.find()]
+    if not kullanicilar:
+        bot.reply_to(message, "Henüz kimse başlatmadı kanka.")
+    else:
+        liste = "\n".join(kullanicilar)
+        bot.reply_to(message, f"👥 Kayıtlı Kullanıcı ID'leri:\n{liste}")
 
 @bot.message_handler(commands=['start'])
 def start(message):
     chat_id = str(message.chat.id)
     if not user_col.find_one({"chat_id": chat_id}):
         user_col.insert_one({"chat_id": chat_id})
-        bot.reply_to(message, "🚀 Bot aktif!")
+        bot.reply_to(message, "🚀 Semih aktif!")
 
 @bot.message_handler(content_types=['video'])
 def video_kaydet(message):
-    # Güvenlik Kontrolü
     if str(message.chat.id) != BENIM_ID:
-        bot.reply_to(message, "Kanka, sadece geliştirici video ekleyebilir!")
+        bot.reply_to(message, "Kanka, Semih sadece geliştiricinin videolarını yer!")
         return
 
     file_id = message.video.file_id
@@ -109,7 +123,7 @@ def video_gonder():
                 secilen_video = random.choice(aktif_videolar)
                 for user_id in aktif_kullanicilar:
                     try:
-                        bot.send_video(chat_id=int(user_id), video=secilen_video, caption="🎬 İşte günün videosu!")
+                        bot.send_video(chat_id=int(user_id), video=secilen_video, caption="🎬 Semih'ten günün videosu!")
                     except:
                         pass
         except:
