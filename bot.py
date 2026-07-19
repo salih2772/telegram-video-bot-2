@@ -72,6 +72,7 @@ def yardim_menusu(message):
 /doner - Döner durumu.
 /ber - ...
 /at - ...
+/sali - Salı arkadaşım mı?
 /baldi - Rastgele replik atar.
 /mercimek - Mercimek sesi çalar.
 """
@@ -109,10 +110,18 @@ def ber_trol(message):
 def at_trol(message):
     bot.reply_to(message, "lan at salih")
 
-# Özel küfürlü komut
+@bot.message_handler(commands=['salı', 'sali'])
+def sali_trol(message):
+    bot.reply_to(message, "benim arkadaşım")
+
+# Özel trol metinleri
 @bot.message_handler(func=lambda message: message.text and (message.text.strip() == "/semih kalp mercimek" or message.text.strip() == "/semih kalp mercimek@semih_bot"))
 def ask_trol(message):
     bot.reply_to(message, "lan aşkımızı karıştırma 0rusbu cocu")
+
+@bot.message_handler(func=lambda message: message.text and (message.text.strip() == "/selo kalp semih" or message.text.strip() == "/selo kalp semih@semih_bot"))
+def selo_trol(message):
+    bot.reply_to(message, "SG OE Ü")
 
 # --- SİSTEM KOMUTLARI ---
 
