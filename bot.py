@@ -69,6 +69,7 @@ def yardim_menusu(message):
 /id - ID numaranı gösterir.
 /samih - Samih'e laf atarsın.
 /semaver - Semaver muhabbeti.
+/doner - Döner durumu.
 /baldi - Rastgele replik atar.
 /mercimek - Mercimek sesi çalar.
 """
@@ -84,7 +85,8 @@ def yardim_menusu(message):
 """
     bot.reply_to(message, yardim_metni, parse_mode="Markdown")
 
-# TROL KOMUTLARI
+# --- TROL KOMUTLARI ---
+
 @bot.message_handler(commands=['samih'])
 def samih_trol(message):
     bot.reply_to(message, "annenmih")
@@ -92,6 +94,17 @@ def samih_trol(message):
 @bot.message_handler(commands=['semaver'])
 def semaver_trol(message):
     bot.reply_to(message, "Annenver")
+
+@bot.message_handler(commands=['doner', 'döner'])
+def doner_trol(message):
+    bot.reply_to(message, "döner çalındı")
+
+# /semih kalp mercimek yazınca tetiklenecek özel alan
+@bot.message_handler(func=lambda message: message.text and (message.text.strip() == "/semih kalp mercimek" or message.text.strip() == "/semih kalp mercimek@semih_bot"))
+def ask_trol(message):
+    bot.reply_to(message, "lan aşkımızı karıştırma 0rusbu cocu")
+
+# --- SİSTEM KOMUTLARI ---
 
 @bot.message_handler(commands=['id'])
 def id_ogren(message):
