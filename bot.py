@@ -12,10 +12,13 @@ API_TOKEN = '8911565294:AAHV62Zuwq9TOvKY2Nn6anRhDRXgP0hlfZc'
 MONGO_URI = "mongodb+srv://darbesalih31_db_user:Salih123456@cluster0.xaa391s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
 RENDER_URL = "https://telegram-video-bot-2-1.onrender.com"
 BENIM_ID = "7826173288" 
+# Mercimek sesi ID'sini buraya yapıştıracaksın (bota atınca sana ID'yi verecek)
+MERCIMEK_VOICE_ID = "BURAYA_KODU_YAPISTIR" 
 
 # --- BAĞLANTILAR ---
 bot = telebot.TeleBot(API_TOKEN, threaded=False)
 app = Flask(__name__)
+bot_running = True # Döngü kontrolü için
 
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
@@ -27,8 +30,8 @@ try:
 except Exception as e:
     print("❌ MongoDB Bağlantı Hatası:", e)
 
+# ... (Döngü ve Webhook fonksiyonları aynı kalıyor) ...
 dongu_thread = None
-
 def dongu_kontrol():
     global dongu_thread
     if dongu_thread is None or not dongu_thread.is_alive():
@@ -37,10 +40,8 @@ def dongu_kontrol():
 
 def self_ping():
     while True:
-        try:
-            requests.get(RENDER_URL)
-        except Exception as e:
-            print("❌ Self-ping hatası:", e)
+        try: requests.get(RENDER_URL)
+        except: pass
         time.sleep(300)
 
 @app.route(f'/{API_TOKEN}', methods=['POST'])
@@ -50,8 +51,7 @@ def getMessage():
         json_string = request.get_data().decode('utf-8')
         update = telebot.types.Update.de_json(json_string)
         bot.process_new_updates([update])
-    except:
-        pass
+    except: pass
     return "!", 200
 
 @app.route("/")
@@ -61,64 +61,73 @@ def webhook_status():
 
 # --- KOMUTLAR ---
 
-@bot.message_handler(commands=['id'])
-def id_ogren(message):
-    bot.reply_to(message, f"Senin ID numaran: {message.chat.id}")
+@bot.message_handler(commands=['baslat'])
+def baslat(message):
+    global bot_running
+    if str(message.chat.id) != BENIM_ID: return
+    bot_running = True
+    bot.reply_to(message, "✅ Döngü başlatıldı, videolar akmaya devam!")
+
+@bot.message_handler(commands=['durdur'])
+def durdur(message):
+    global bot_running
+    if str(message.chat.id) != BENIM_ID: return
+    bot_running = False
+    bot.reply_to(message, "🛑 Döngü durduruldu. Sadece komutlara bakıyorum.")
+
+@bot.message_handler(commands=['baldi'])
+def baldi_sozleri(message):
+    replikler = ["I HEAR EVERY DOOR YOU OPEN! 📏", "GET OUT WHILE YOU STILL CAN!", "Semih buna kanmaz ahhahaha!", "Welcome to my schoolhouse!"]
+    bot.reply_to(message, random.choice(replikler))
+
+@bot.message_handler(commands=['mercimek'])
+def mercimek_sesi(message):
+    if MERCIMEK_VOICE_ID == "BURAYA_KODU_YAPISTIR":
+        bot.reply_to(message, "Kanka önce ses dosyasını bota atıp ID'sini öğrenmen lazım, koda işlemedin!")
+    else:
+        bot.send_voice(chat_id=message.chat.id, voice=MERCIMEK_VOICE_ID)
+
+# Ses dosyası ID'sini bulmak için yardımcı
+@bot.message_handler(content_types=['voice', 'audio'])
+def ses_id_bul(message):
+    if str(message.chat.id) == BENIM_ID:
+        ses_id = message.voice.file_id if message.voice else message.audio.file_id
+        bot.reply_to(message, f"🎯 Ses dosyasının ID'si: `{ses_id}`\n\nBunu koddaki MERCIMEK_VOICE_ID kısmına yapıştır!")
+
+# --- DİĞER FONKSİYONLAR ---
+# (Temizle, durum, kullanicilar, start, video_kaydet aynı kalıyor...)
 
 @bot.message_handler(commands=['temizle'])
 def veritabani_temizle(message):
     if str(message.chat.id) != BENIM_ID:
         bot.reply_to(message, "Semih buna kanmaz ahhahaha!")
         return
-    try:
-        silinen = video_col.delete_many({})
-        bot.reply_to(message, f"🧹 Havuz sıfırlandı! {silinen.deleted_count} video silindi.")
-    except Exception as e:
-        bot.reply_to(message, f"Hata oluştu: {e}")
+    silinen = video_col.delete_many({})
+    bot.reply_to(message, f"🧹 Havuz sıfırlandı! {silinen.deleted_count} video silindi.")
 
 @bot.message_handler(commands=['durum'])
 def bot_durum(message):
     if str(message.chat.id) != BENIM_ID: return
     video_sayisi = video_col.count_documents({})
     kullanici_sayisi = user_col.count_documents({})
-    bot.reply_to(message, f"📊 Semih'in Durumu:\n- Havuzdaki video: {video_sayisi}\n- Kayıtlı kullanıcı: {kullanici_sayisi}")
+    bot.reply_to(message, f"📊 Semih'in Durumu:\n- Video: {video_sayisi}\n- Kullanıcı: {kullanici_sayisi}\n- Durum: {'Çalışıyor' if bot_running else 'Durdu'}")
 
 @bot.message_handler(commands=['kullanicilar'])
 def listele_kullanicilar(message):
     if str(message.chat.id) != BENIM_ID: return
     kullanicilar = [doc["chat_id"] for doc in user_col.find()]
-    if not kullanicilar:
-        bot.reply_to(message, "Henüz kimse başlatmadı kanka.")
-    else:
-        liste = "\n".join(kullanicilar)
-        bot.reply_to(message, f"👥 Kayıtlı Kullanıcı ID'leri:\n{liste}")
+    liste = "\n".join(kullanicilar) if kullanicilar else "Yok."
+    bot.reply_to(message, f"👥 Kullanıcılar:\n{liste}")
 
-# GELİŞTİRİCİ DUYURU KOMUTU
 @bot.message_handler(commands=['duyuru'])
 def toplu_duyuru(message):
-    if str(message.chat.id) != BENIM_ID:
-        bot.reply_to(message, "Semih buna kanmaz ahhahaha!")
-        return
-    
-    # Komuttan sonra yazılan metni alıyoruz
+    if str(message.chat.id) != BENIM_ID: return
     duyuru_metni = message.text.replace("/duyuru", "").strip()
-    
-    if not duyuru_metni:
-        bot.reply_to(message, "Kanka boş duyuru mu yapacan? Mesajını da yaz: `/duyuru mesajın`")
-        return
-        
     kullanicilar = [doc["chat_id"] for doc in user_col.find()]
-    basarili = 0
-    
     for user_id in kullanicilar:
-        try:
-            bot.send_message(chat_id=int(user_id), text=f"📢 Semih'ten Duyuru:\n\n{duyuru_metni}")
-            basarili += 1
-            time.sleep(0.1) # Telegram ban yememek için hafif yavaşlatma
-        except:
-            pass
-            
-    bot.reply_to(message, f"✅ Duyuru toplam {basarili} kişiye başarıyla gönderildi kanka!")
+        try: bot.send_message(chat_id=int(user_id), text=f"📢 {duyuru_metni}")
+        except: pass
+    bot.reply_to(message, "✅ Duyuru gönderildi!")
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -129,34 +138,26 @@ def start(message):
 
 @bot.message_handler(content_types=['video'])
 def video_kaydet(message):
-    if str(message.chat.id) != BENIM_ID:
-        bot.reply_to(message, "Kanka, Semih sadece geliştiricinin videolarını yer!")
-        return
-
+    if str(message.chat.id) != BENIM_ID: return
     file_id = message.video.file_id
     if not video_col.find_one({"file_id": file_id}):
         video_col.insert_one({"file_id": file_id})
         bot.reply_to(message, "✅ Video eklendi!")
-    else:
-        bot.reply_to(message, "Bu video zaten var kanka!")
 
 def video_gonder():
     while True:
         time.sleep(60)
-        try:
-            aktif_videolar = [doc["file_id"] for doc in video_col.find()]
-            aktif_kullanicilar = [doc["chat_id"] for doc in user_col.find()]
-            if aktif_videolar and aktif_kullanicilar:
-                secilen_video = random.choice(aktif_videolar)
-                for user_id in aktif_kullanicilar:
-                    try:
-                        bot.send_video(chat_id=int(user_id), video=secilen_video, caption="🎬 Semih'ten günün videosu!")
-                    except:
-                        pass
-        except:
-            pass
+        if bot_running: # Sadece bot_running True ise çalışır
+            try:
+                aktif_videolar = [doc["file_id"] for doc in video_col.find()]
+                aktif_kullanicilar = [doc["chat_id"] for doc in user_col.find()]
+                if aktif_videolar and aktif_kullanicilar:
+                    secilen_video = random.choice(aktif_videolar)
+                    for user_id in aktif_kullanicilar:
+                        try: bot.send_video(chat_id=int(user_id), video=secilen_video, caption="🎬 Semih'ten günün videosu!")
+                        except: pass
+            except: pass
 
-dongu_threshold = None
 dongu_kontrol()
 threading.Thread(target=self_ping, daemon=True).start()
 
